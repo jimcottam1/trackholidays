@@ -1,9 +1,18 @@
 const { createClient } = require('@libsql/client');
 
+// Log environment variables (masked for security)
+const dbUrl = process.env.TURSO_DATABASE_URL || 'file:local.db';
+const authToken = process.env.TURSO_AUTH_TOKEN;
+
+console.log('=== Database Configuration ===');
+console.log('TURSO_DATABASE_URL:', dbUrl);
+console.log('TURSO_AUTH_TOKEN set:', authToken ? `Yes (${authToken.length} chars, starts with ${authToken.substring(0, 20)}...)` : 'No');
+console.log('==============================');
+
 // Initialize Turso client
 const client = createClient({
-  url: process.env.TURSO_DATABASE_URL || 'file:local.db',
-  authToken: process.env.TURSO_AUTH_TOKEN
+  url: dbUrl,
+  authToken: authToken
 });
 
 // Wrapper to handle both query formats
