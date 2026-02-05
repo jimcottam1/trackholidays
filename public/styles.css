@@ -924,6 +924,9 @@ body:not(.role-admin):not(.role-manager) td.manager-only {
   .holiday-event {
     font-size: 8px;
     padding: 1px 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .calendar-legend {
@@ -1014,16 +1017,16 @@ body:not(.role-admin):not(.role-manager) td.manager-only {
   }
 
   .holiday-event {
-    display: none;
+    font-size: 7px;
+    padding: 1px 2px;
+    margin-bottom: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
   }
 
-  .calendar-day.public-holiday::after {
-    content: '';
-    display: block;
-    width: 6px;
-    height: 6px;
-    background: var(--success);
-    border-radius: 50%;
-    margin: 2px auto;
+  .holiday-event.public {
+    font-size: 6px;
   }
 }
