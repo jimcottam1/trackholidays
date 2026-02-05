@@ -386,6 +386,8 @@ app.delete('/api/departments/:id', authenticate, requireRole('admin'), async (re
 app.get('/api/employees', authenticate, async (req, res) => {
   try {
     const { status, department_id } = req.query;
+    const currentYear = new Date().getFullYear().toString();
+
     let query = `
       SELECT e.*, d.name as department_name
       FROM employees e
@@ -407,24 +409,45 @@ app.get('/api/employees', authenticate, async (req, res) => {
 
     const result = await db.execute(query, params);
 
-    const employees = result.rows.map(e => ({
-      id: e.id,
-      employee_number: e.employee_number,
-      first_name: e.first_name,
-      last_name: e.last_name,
-      email: e.email,
-      phone: e.phone,
-      department_id: e.department_id,
-      department_name: e.department_name,
-      job_title: e.job_title,
-      start_date: e.start_date,
-      salary: e.salary,
-      holiday_allowance: e.holiday_allowance,
-      address: e.address,
-      emergency_contact_name: e.emergency_contact_name,
-      emergency_contact_phone: e.emergency_contact_phone,
-      status: e.status
-    }));
+    // Get holiday usage for all employees for the current year
+    const holidayUsage = await db.execute(
+      `SELECT employee_id, SUM(days) as used
+       FROM holidays
+       WHERE status = 'approved' AND type = 'annual' AND strftime('%Y', start_date) = ?
+       GROUP BY employee_id`,
+      [currentYear]
+    );
+
+    // Create a map for quick lookup
+    const usageMap = {};
+    holidayUsage.rows.forEach(row => {
+      usageMap[row.employee_id] = row.used || 0;
+    });
+
+    const employees = result.rows.map(e => {
+      const used = usageMap[e.id] || 0;
+      const remaining = (e.holiday_allowance || 25) - used;
+      return {
+        id: e.id,
+        employee_number: e.employee_number,
+        first_name: e.first_name,
+        last_name: e.last_name,
+        email: e.email,
+        phone: e.phone,
+        department_id: e.department_id,
+        department_name: e.department_name,
+        job_title: e.job_title,
+        start_date: e.start_date,
+        salary: e.salary,
+        holiday_allowance: e.holiday_allowance,
+        holidays_used: used,
+        holidays_remaining: remaining,
+        address: e.address,
+        emergency_contact_name: e.emergency_contact_name,
+        emergency_contact_phone: e.emergency_contact_phone,
+        status: e.status
+      };
+    });
 
     res.json(employees);
   } catch (err) {
@@ -624,7 +647,7 @@ app.get('/api/holidays', authenticate, async (req, res) => {
 
 app.post('/api/holidays', authenticate, async (req, res) => {
   try {
-    const { employee_id, start_date, end_date, type, notes } = req.body;
+    const { employee_id, start_date, end_date, type, notes, is_half_day, half_day_period } = req.body;
 
     const targetEmployeeId = employee_id || req.user.employeeId;
 
@@ -641,12 +664,22 @@ app.post('/api/holidays', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    const days = await calculateWorkingDays(start_date, end_date);
+    let days;
+    if (is_half_day) {
+      days = 0.5;
+    } else {
+      days = await calculateWorkingDays(start_date, end_date);
+    }
+
+    // Store half day info in notes if applicable
+    const finalNotes = is_half_day
+      ? `${half_day_period || 'AM'} half day${notes ? '. ' + notes : ''}`
+      : notes || null;
 
     const result = await db.execute(`
       INSERT INTO holidays (employee_id, start_date, end_date, days, type, notes, status)
       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
-    `, [targetEmployeeId, start_date, end_date, days, type || 'annual', notes || null, 'approved']);
+    `, [targetEmployeeId, start_date, end_date, days, type || 'annual', finalNotes, 'approved']);
 
     res.status(201).json({ id: result.rows[0].id, employee_id: targetEmployeeId, start_date, end_date, days });
   } catch (err) {
@@ -658,7 +691,7 @@ app.post('/api/holidays', authenticate, async (req, res) => {
 app.put('/api/holidays/:id', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
-    const { start_date, end_date, type, notes, status } = req.body;
+    const { start_date, end_date, type, notes, status, is_half_day, half_day_period } = req.body;
 
     const existing = await db.execute('SELECT * FROM holidays WHERE id = ?', [id]);
     if (existing.rows.length === 0) {
@@ -673,12 +706,24 @@ app.put('/api/holidays/:id', authenticate, async (req, res) => {
 
     const newStartDate = start_date || holiday.start_date;
     const newEndDate = end_date || holiday.end_date;
-    const days = await calculateWorkingDays(newStartDate, newEndDate);
+
+    let days;
+    if (is_half_day) {
+      days = 0.5;
+    } else {
+      days = await calculateWorkingDays(newStartDate, newEndDate);
+    }
+
+    // Handle notes with half day info
+    let finalNotes = notes !== undefined ? notes : holiday.notes;
+    if (is_half_day) {
+      finalNotes = `${half_day_period || 'AM'} half day${notes ? '. ' + notes : ''}`;
+    }
 
     await db.execute(`
       UPDATE holidays SET start_date = ?, end_date = ?, days = ?, type = ?, notes = ?, status = ?
       WHERE id = ?
-    `, [newStartDate, newEndDate, days, type || holiday.type, notes !== undefined ? notes : holiday.notes, status || holiday.status, id]);
+    `, [newStartDate, newEndDate, days, type || holiday.type, finalNotes, status || holiday.status, id]);
 
     res.json({ message: 'Holiday updated' });
   } catch (err) {

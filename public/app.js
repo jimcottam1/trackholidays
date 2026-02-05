@@ -190,16 +190,21 @@ function renderEmployeesTable() {
   const isManagerOrAdmin = ['admin', 'manager'].includes(currentUser.role);
 
   if (employees.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No employees found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No employees found</td></tr>';
     return;
   }
 
-  tbody.innerHTML = employees.map(e => `
+  tbody.innerHTML = employees.map(e => {
+    const remaining = e.holidays_remaining !== undefined ? e.holidays_remaining : e.holiday_allowance;
+    const allowance = e.holiday_allowance || 25;
+    const holidayClass = remaining <= 0 ? 'danger' : remaining <= 5 ? 'warning' : 'success';
+    return `
     <tr>
       <td>${e.first_name} ${e.last_name}</td>
       <td>${e.email}</td>
       <td>${e.department_name || '-'}</td>
       <td>${e.job_title || '-'}</td>
+      <td><span class="badge ${holidayClass}">${remaining} / ${allowance}</span></td>
       <td><span class="badge ${e.status}">${e.status}</span></td>
       <td class="actions">
         <button class="btn btn-sm" onclick="viewEmployee(${e.id})">View</button>
@@ -209,7 +214,8 @@ function renderEmployeesTable() {
         ` : ''}
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function populateEmployeeSelects() {
@@ -485,6 +491,11 @@ document.getElementById('add-holiday-btn').addEventListener('click', () => {
   document.getElementById('holiday-form').reset();
   document.getElementById('holiday-id').value = '';
 
+  // Reset half day fields
+  document.getElementById('holiday-half-day').checked = false;
+  document.getElementById('half-day-period-group').style.display = 'none';
+  document.getElementById('holiday-end').disabled = false;
+
   // If employee, preselect themselves
   if (currentUser.employeeId) {
     document.getElementById('holiday-employee').value = currentUser.employeeId;
@@ -504,7 +515,30 @@ async function editHoliday(id) {
   document.getElementById('holiday-start').value = holiday.start_date;
   document.getElementById('holiday-end').value = holiday.end_date;
   document.getElementById('holiday-type').value = holiday.type;
-  document.getElementById('holiday-notes').value = holiday.notes || '';
+
+  // Check if this is a half day (0.5 days)
+  const isHalfDay = holiday.days === 0.5;
+  document.getElementById('holiday-half-day').checked = isHalfDay;
+
+  if (isHalfDay) {
+    document.getElementById('half-day-period-group').style.display = 'block';
+    document.getElementById('holiday-end').disabled = true;
+    // Try to extract period from notes
+    const notes = holiday.notes || '';
+    if (notes.startsWith('PM half day')) {
+      document.getElementById('holiday-half-day-period').value = 'PM';
+      document.getElementById('holiday-notes').value = notes.replace(/^PM half day\.?\s*/, '');
+    } else if (notes.startsWith('AM half day')) {
+      document.getElementById('holiday-half-day-period').value = 'AM';
+      document.getElementById('holiday-notes').value = notes.replace(/^AM half day\.?\s*/, '');
+    } else {
+      document.getElementById('holiday-notes').value = notes;
+    }
+  } else {
+    document.getElementById('half-day-period-group').style.display = 'none';
+    document.getElementById('holiday-end').disabled = false;
+    document.getElementById('holiday-notes').value = holiday.notes || '';
+  }
 
   updateHolidayAllowanceInfo();
   openModal('holiday-modal');
@@ -524,13 +558,16 @@ async function deleteHoliday(id) {
 document.getElementById('holiday-form').addEventListener('submit', async (e) => {
   e.preventDefault();
 
+  const isHalfDay = document.getElementById('holiday-half-day').checked;
   const id = document.getElementById('holiday-id').value;
   const data = {
     employee_id: document.getElementById('holiday-employee').value,
     start_date: document.getElementById('holiday-start').value,
     end_date: document.getElementById('holiday-end').value,
     type: document.getElementById('holiday-type').value,
-    notes: document.getElementById('holiday-notes').value
+    notes: document.getElementById('holiday-notes').value,
+    is_half_day: isHalfDay,
+    half_day_period: isHalfDay ? document.getElementById('holiday-half-day-period').value : null
   };
 
   try {
@@ -547,6 +584,30 @@ document.getElementById('holiday-form').addEventListener('submit', async (e) => 
 });
 
 document.getElementById('holiday-employee').addEventListener('change', updateHolidayAllowanceInfo);
+
+// Half day toggle
+document.getElementById('holiday-half-day').addEventListener('change', function() {
+  const periodGroup = document.getElementById('half-day-period-group');
+  const endDateInput = document.getElementById('holiday-end');
+  const startDateInput = document.getElementById('holiday-start');
+
+  if (this.checked) {
+    periodGroup.style.display = 'block';
+    // For half day, end date should be same as start date
+    endDateInput.value = startDateInput.value;
+    endDateInput.disabled = true;
+  } else {
+    periodGroup.style.display = 'none';
+    endDateInput.disabled = false;
+  }
+});
+
+// Sync end date with start date when half day is checked
+document.getElementById('holiday-start').addEventListener('change', function() {
+  if (document.getElementById('holiday-half-day').checked) {
+    document.getElementById('holiday-end').value = this.value;
+  }
+});
 
 async function updateHolidayAllowanceInfo() {
   const employeeId = document.getElementById('holiday-employee').value;
