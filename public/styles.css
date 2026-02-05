@@ -771,41 +771,229 @@ body:not(.role-admin):not(.role-manager) td.manager-only {
 }
 
 @media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+  }
+
   .sidebar {
     width: 100%;
     position: relative;
     height: auto;
   }
 
+  .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   .main-content {
     margin-left: 0;
+    padding: 15px;
   }
 
   .nav-menu {
     display: flex;
     flex-wrap: wrap;
     padding: 10px;
+    gap: 5px;
   }
 
   .nav-item {
-    padding: 10px 15px;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 6px;
   }
 
+  .nav-icon {
+    display: none;
+  }
+
+  .sidebar-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .user-info {
+    flex-direction: row;
+    margin-bottom: 0;
+  }
+
+  /* View header */
+  .view-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .view-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .calendar-controls {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  /* Forms */
   .form-row {
     grid-template-columns: 1fr;
   }
 
+  /* Dashboard */
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
 
+  .stats-cards {
+    grid-template-columns: 1fr;
+  }
+
+  /* Tables - horizontal scroll */
+  .table-container {
+    overflow-x: auto;
+  }
+
+  table {
+    min-width: 600px;
+  }
+
+  th, td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  /* Calendar */
+  .calendar-header div {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+
   .calendar-day {
-    min-height: 60px;
+    min-height: 50px;
     padding: 4px;
   }
 
+  .calendar-day .day-number {
+    font-size: 12px;
+  }
+
   .holiday-event {
-    font-size: 9px;
+    font-size: 8px;
     padding: 1px 3px;
+  }
+
+  .calendar-legend {
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  /* Filters */
+  .filters {
+    flex-direction: column;
+  }
+
+  .filters select,
+  .filters input {
+    width: 100%;
+  }
+
+  /* Timesheet */
+  .clock-buttons {
+    width: 100%;
+  }
+
+  .clock-buttons .btn {
+    flex: 1;
+  }
+
+  .timesheet-summary {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Modal */
+  .modal {
+    padding: 10px;
+  }
+
+  .modal-content {
+    max-height: 95vh;
+  }
+
+  .modal-content.modal-lg {
+    max-width: 100%;
+  }
+
+  /* Login */
+  .login-box {
+    padding: 25px;
+    margin: 15px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .main-content {
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-number {
+    font-size: 2rem;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .calendar-day {
+    min-height: 40px;
+    padding: 2px;
+  }
+
+  .calendar-day .day-number {
+    font-size: 10px;
+  }
+
+  .calendar-day.today .day-number {
+    width: 22px;
+    height: 22px;
+  }
+
+  .holiday-event {
+    display: none;
+  }
+
+  .calendar-day.public-holiday::after {
+    content: '';
+    display: block;
+    width: 6px;
+    height: 6px;
+    background: var(--success);
+    border-radius: 50%;
+    margin: 2px auto;
   }
 }
