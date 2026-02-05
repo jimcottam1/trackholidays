@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HR System</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-box">
+      <h1>HR System</h1>
+      <p>Sign in to your account</p>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" required placeholder="admin@company.com">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" required placeholder="admin123">
+        </div>
+        <div id="login-error" class="error-message"></div>
+        <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app hidden">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <h2>HR System</h2>
+      </div>
+      <ul class="nav-menu">
+        <li class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">&#9632;</span> Dashboard
+        </li>
+        <li class="nav-item" data-view="employees">
+          <span class="nav-icon">&#9787;</span> Employees
+        </li>
+        <li class="nav-item" data-view="holidays">
+          <span class="nav-icon">&#9788;</span> Holidays
+        </li>
+        <li class="nav-item" data-view="calendar">
+          <span class="nav-icon">&#9783;</span> Calendar
+        </li>
+        <li class="nav-item" data-view="timesheet">
+          <span class="nav-icon">&#9200;</span> Time & Attendance
+        </li>
+        <li class="nav-item admin-only" data-view="departments">
+          <span class="nav-icon">&#9881;</span> Departments
+        </li>
+        <li class="nav-item admin-only" data-view="users">
+          <span class="nav-icon">&#9881;</span> User Accounts
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <span id="user-email"></span>
+          <span id="user-role" class="badge"></span>
+        </div>
+        <button id="logout-btn" class="btn btn-sm">Logout</button>
+      </div>
+    </nav>
+
+    <main class="main-content">
+      <!-- Dashboard View -->
+      <section id="dashboard-view" class="view active">
+        <h1>Dashboard</h1>
+        <div class="stats-cards">
+          <div class="stat-card">
+            <div class="stat-number" id="stat-employees">0</div>
+            <div class="stat-label">Total Employees</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="stat-holiday">0</div>
+            <div class="stat-label">On Holiday Today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="stat-clocked">0</div>
+            <div class="stat-label">Clocked In</div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="card">
+            <h3>Upcoming Holidays</h3>
+            <div id="upcoming-holidays"></div>
+          </div>
+          <div class="card">
+            <h3>Recent Activity</h3>
+            <div id="recent-activity"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Employees View -->
+      <section id="employees-view" class="view">
+        <div class="view-header">
+          <h1>Employees</h1>
+          <button class="btn btn-primary manager-only" id="add-employee-btn">+ Add Employee</button>
+        </div>
+        <div class="filters">
+          <select id="employee-dept-filter">
+            <option value="">All Departments</option>
+          </select>
+          <select id="employee-status-filter">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="">All</option>
+          </select>
+        </div>
+        <div class="table-container">
+          <table id="employees-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Department</th>
+                <th>Job Title</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Holidays View -->
+      <section id="holidays-view" class="view">
+        <div class="view-header">
+          <h1>Holiday Management</h1>
+          <button class="btn btn-primary" id="add-holiday-btn">+ Book Holiday</button>
+        </div>
+        <div class="filters">
+          <select id="holiday-employee-filter">
+            <option value="">All Employees</option>
+          </select>
+          <select id="holiday-year-filter"></select>
+        </div>
+        <div class="table-container">
+          <table id="holidays-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Days</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Calendar View -->
+      <section id="calendar-view" class="view">
+        <div class="view-header">
+          <h1>Holiday Calendar</h1>
+          <div class="calendar-controls">
+            <button class="btn admin-only" id="refresh-public-holidays-btn" title="Refresh public holidays from online">Refresh Public Holidays</button>
+            <div class="calendar-nav">
+              <button class="btn" id="prev-month">&lt;</button>
+              <span id="current-month"></span>
+              <button class="btn" id="next-month">&gt;</button>
+            </div>
+          </div>
+        </div>
+        <div class="calendar">
+          <div class="calendar-header">
+            <div>Sun</div>
+            <div>Mon</div>
+            <div>Tue</div>
+            <div>Wed</div>
+            <div>Thu</div>
+            <div>Fri</div>
+            <div>Sat</div>
+          </div>
+          <div class="calendar-grid" id="calendar-grid"></div>
+        </div>
+        <div class="calendar-legend">
+          <span><span class="legend-dot public"></span> Public Holiday</span>
+          <span><span class="legend-dot annual"></span> Annual Leave</span>
+          <span><span class="legend-dot sick"></span> Sick Leave</span>
+          <span><span class="legend-dot other"></span> Other</span>
+        </div>
+      </section>
+
+      <!-- Timesheet View -->
+      <section id="timesheet-view" class="view">
+        <div class="view-header">
+          <h1>Time & Attendance</h1>
+          <div class="clock-buttons" id="clock-buttons">
+            <button class="btn btn-primary" id="clock-in-btn">Clock In</button>
+            <button class="btn" id="clock-out-btn">Clock Out</button>
+          </div>
+        </div>
+        <div class="filters">
+          <select id="timesheet-employee-filter" class="manager-only">
+            <option value="">All Employees</option>
+          </select>
+          <input type="date" id="timesheet-start-date">
+          <input type="date" id="timesheet-end-date">
+          <button class="btn" id="filter-timesheet-btn">Filter</button>
+        </div>
+        <div class="timesheet-summary" id="timesheet-summary"></div>
+        <div class="table-container">
+          <table id="timesheet-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Date</th>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th>Break</th>
+                <th>Total Hours</th>
+                <th>Overtime</th>
+                <th class="manager-only">Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Departments View -->
+      <section id="departments-view" class="view">
+        <div class="view-header">
+          <h1>Departments</h1>
+          <button class="btn btn-primary" id="add-department-btn">+ Add Department</button>
+        </div>
+        <div class="table-container">
+          <table id="departments-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Manager</th>
+                <th>Employees</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Users View -->
+      <section id="users-view" class="view">
+        <div class="view-header">
+          <h1>User Accounts</h1>
+          <button class="btn btn-primary" id="add-user-btn">+ Add User</button>
+        </div>
+        <div class="table-container">
+          <table id="users-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Linked Employee</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Employee Modal -->
+  <div class="modal" id="employee-modal">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h2 id="employee-modal-title">Add Employee</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <form id="employee-form">
+        <input type="hidden" id="employee-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>First Name *</label>
+            <input type="text" id="employee-first-name" required>
+          </div>
+          <div class="form-group">
+            <label>Last Name *</label>
+            <input type="text" id="employee-last-name" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" id="employee-email" required>
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="tel" id="employee-phone">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Employee Number</label>
+            <input type="text" id="employee-number">
+          </div>
+          <div class="form-group">
+            <label>Department</label>
+            <select id="employee-department"></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Job Title</label>
+            <input type="text" id="employee-job-title">
+          </div>
+          <div class="form-group">
+            <label>Start Date</label>
+            <input type="date" id="employee-start-date">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Holiday Allowance (days)</label>
+            <input type="number" id="employee-allowance" value="25">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="employee-status">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Address</label>
+          <textarea id="employee-address" rows="2"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Emergency Contact Name</label>
+            <input type="text" id="employee-emergency-name">
+          </div>
+          <div class="form-group">
+            <label>Emergency Contact Phone</label>
+            <input type="tel" id="employee-emergency-phone">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" onclick="closeModal('employee-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Holiday Modal -->
+  <div class="modal" id="holiday-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="holiday-modal-title">Book Holiday</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <form id="holiday-form">
+        <input type="hidden" id="holiday-id">
+        <div class="form-group">
+          <label>Employee *</label>
+          <select id="holiday-employee" required></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Start Date *</label>
+            <input type="date" id="holiday-start" required>
+          </div>
+          <div class="form-group">
+            <label>End Date *</label>
+            <input type="date" id="holiday-end" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="holiday-type">
+            <option value="annual">Annual Leave</option>
+            <option value="sick">Sick Leave</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea id="holiday-notes" rows="3"></textarea>
+        </div>
+        <div id="holiday-allowance-info" class="info-box"></div>
+        <div class="form-actions">
+          <button type="button" class="btn" onclick="closeModal('holiday-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Department Modal -->
+  <div class="modal" id="department-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="department-modal-title">Add Department</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <form id="department-form">
+        <input type="hidden" id="department-id">
+        <div class="form-group">
+          <label>Department Name *</label>
+          <input type="text" id="department-name" required>
+        </div>
+        <div class="form-group">
+          <label>Manager</label>
+          <select id="department-manager">
+            <option value="">No Manager</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" onclick="closeModal('department-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- User Modal -->
+  <div class="modal" id="user-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="user-modal-title">Add User</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <form id="user-form">
+        <input type="hidden" id="user-id">
+        <div class="form-group">
+          <label>Email *</label>
+          <input type="email" id="user-email-input" required>
+        </div>
+        <div class="form-group">
+          <label>Password <span id="password-required">*</span></label>
+          <input type="password" id="user-password">
+          <small>Leave blank to keep existing password when editing</small>
+        </div>
+        <div class="form-group">
+          <label>Role *</label>
+          <select id="user-role-select" required>
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Link to Employee</label>
+          <select id="user-employee">
+            <option value="">No Employee Link</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" onclick="closeModal('user-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Time Entry Modal -->
+  <div class="modal" id="timeentry-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add Time Entry</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <form id="timeentry-form">
+        <input type="hidden" id="timeentry-id">
+        <div class="form-group">
+          <label>Employee *</label>
+          <select id="timeentry-employee" required></select>
+        </div>
+        <div class="form-group">
+          <label>Date *</label>
+          <input type="date" id="timeentry-date" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Clock In *</label>
+            <input type="time" id="timeentry-clock-in" required>
+          </div>
+          <div class="form-group">
+            <label>Clock Out</label>
+            <input type="time" id="timeentry-clock-out">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Break (minutes)</label>
+          <input type="number" id="timeentry-break" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea id="timeentry-notes" rows="2"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" onclick="closeModal('timeentry-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
