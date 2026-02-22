@@ -560,10 +560,18 @@ document.getElementById('holiday-form').addEventListener('submit', async (e) => 
 
   const isHalfDay = document.getElementById('holiday-half-day').checked;
   const id = document.getElementById('holiday-id').value;
+  const start_date = document.getElementById('holiday-start').value;
+  const end_date = document.getElementById('holiday-end').value;
+
+  if (end_date < start_date) {
+    alert('End date cannot be before the start date.');
+    return;
+  }
+
   const data = {
     employee_id: document.getElementById('holiday-employee').value,
-    start_date: document.getElementById('holiday-start').value,
-    end_date: document.getElementById('holiday-end').value,
+    start_date,
+    end_date,
     type: document.getElementById('holiday-type').value,
     notes: document.getElementById('holiday-notes').value,
     is_half_day: isHalfDay,

@@ -661,6 +661,10 @@ app.post('/api/holidays', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Employee, start date, and end date required' });
     }
 
+    if (end_date < start_date) {
+      return res.status(400).json({ error: 'End date cannot be before the start date' });
+    }
+
     const empCheck = await db.execute('SELECT id FROM employees WHERE id = ?', [targetEmployeeId]);
     if (empCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Employee not found' });
