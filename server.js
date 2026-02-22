@@ -23,14 +23,16 @@ async function getPublicHolidayDates() {
 // Calculate working days between two dates (excluding weekends and public holidays)
 async function calculateWorkingDays(startDate, endDate) {
   const publicHolidays = await getPublicHolidayDates();
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [ey, em, ed] = endDate.split('-').map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
   let days = 0;
   const current = new Date(start);
 
   while (current <= end) {
     const dayOfWeek = current.getDay();
-    const dateStr = current.toISOString().split('T')[0];
+    const dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
 
     if (dayOfWeek !== 0 && dayOfWeek !== 6 && !publicHolidays.has(dateStr)) {
       days++;

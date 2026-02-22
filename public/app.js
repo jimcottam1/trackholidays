@@ -674,16 +674,14 @@ async function renderCalendar() {
   // Current month days
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const isToday = date.toDateString() === today.toDateString();
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const publicHoliday = publicHolidayMap[dateStr];
 
-    // Find employee holidays for this day
+    // Find employee holidays for this day (use string comparison to avoid timezone issues)
     const dayHolidays = monthHolidays.filter(h => {
-      const start = new Date(h.start_date);
-      const end = new Date(h.end_date);
-      return date >= start && date <= end;
+      return dateStr >= h.start_date && dateStr <= h.end_date;
     });
 
     let classes = 'calendar-day';
@@ -946,7 +944,8 @@ document.getElementById('user-form').addEventListener('submit', async (e) => {
 // Helpers
 function formatDate(dateStr) {
   if (!dateStr) return '-';
-  const date = new Date(dateStr);
+  const [y, m, d] = dateStr.split('-');
+  const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
