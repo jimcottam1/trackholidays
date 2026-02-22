@@ -585,9 +585,8 @@ app.delete('/api/employees/:id', authenticate, requireRole('admin'), async (req,
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    // Also delete their holidays and time entries
+    // Also delete their holidays
     await db.execute('DELETE FROM holidays WHERE employee_id = ?', [id]);
-    await db.execute('DELETE FROM time_entries WHERE employee_id = ?', [id]);
 
     res.json({ message: 'Employee deleted' });
   } catch (err) {
@@ -634,10 +633,10 @@ app.get('/api/holidays', authenticate, async (req, res) => {
     }));
 
     if (year) {
-      holidays = holidays.filter(h => new Date(h.start_date).getFullYear().toString() === year);
+      holidays = holidays.filter(h => h.start_date.substring(0, 4) === year);
     }
     if (month) {
-      holidays = holidays.filter(h => (new Date(h.start_date).getMonth() + 1).toString().padStart(2, '0') === month.padStart(2, '0'));
+      holidays = holidays.filter(h => h.start_date.substring(5, 7) === month.padStart(2, '0'));
     }
 
     res.json(holidays);
@@ -791,186 +790,6 @@ app.get('/api/holidays/summary/:employeeId', authenticate, async (req, res) => {
   }
 });
 
-// ============ TIME & ATTENDANCE ROUTES ============
-
-app.get('/api/timesheet', authenticate, async (req, res) => {
-  try {
-    const { employee_id, start_date, end_date } = req.query;
-    let query = `
-      SELECT t.*, e.first_name, e.last_name
-      FROM time_entries t
-      LEFT JOIN employees e ON t.employee_id = e.id
-      WHERE 1=1
-    `;
-    const params = [];
-
-    if (req.user.role === 'employee') {
-      query += ' AND t.employee_id = ?';
-      params.push(req.user.employeeId);
-    } else if (employee_id) {
-      query += ' AND t.employee_id = ?';
-      params.push(employee_id);
-    }
-
-    if (start_date) {
-      query += ' AND t.date >= ?';
-      params.push(start_date);
-    }
-    if (end_date) {
-      query += ' AND t.date <= ?';
-      params.push(end_date);
-    }
-
-    query += ' ORDER BY t.date DESC';
-
-    const result = await db.execute(query, params);
-
-    const timeEntries = result.rows.map(t => ({
-      id: t.id,
-      employee_id: t.employee_id,
-      first_name: t.first_name,
-      last_name: t.last_name,
-      date: t.date,
-      clock_in: t.clock_in,
-      clock_out: t.clock_out,
-      break_minutes: t.break_minutes,
-      total_hours: t.total_hours,
-      overtime_hours: t.overtime_hours,
-      notes: t.notes
-    }));
-
-    res.json(timeEntries);
-  } catch (err) {
-    console.error('Get timesheet error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.post('/api/timesheet/clock-in', authenticate, async (req, res) => {
-  try {
-    const employeeId = req.user.employeeId;
-
-    if (!employeeId) {
-      return res.status(400).json({ error: 'No employee profile linked to your account' });
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toTimeString().split(' ')[0].slice(0, 5);
-
-    const existing = await db.execute(
-      'SELECT id FROM time_entries WHERE employee_id = ? AND date = ? AND clock_out IS NULL',
-      [employeeId, today]
-    );
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ error: 'Already clocked in today' });
-    }
-
-    const result = await db.execute(
-      'INSERT INTO time_entries (employee_id, date, clock_in) VALUES (?, ?, ?) RETURNING id',
-      [employeeId, today, now]
-    );
-
-    res.status(201).json({ id: result.rows[0].id, date: today, clock_in: now });
-  } catch (err) {
-    console.error('Clock in error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.post('/api/timesheet/clock-out', authenticate, async (req, res) => {
-  try {
-    const employeeId = req.user.employeeId;
-    const { break_minutes } = req.body;
-
-    if (!employeeId) {
-      return res.status(400).json({ error: 'No employee profile linked to your account' });
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toTimeString().split(' ')[0].slice(0, 5);
-
-    const existing = await db.execute(
-      'SELECT * FROM time_entries WHERE employee_id = ? AND date = ? AND clock_out IS NULL',
-      [employeeId, today]
-    );
-    if (existing.rows.length === 0) {
-      return res.status(400).json({ error: 'No active clock-in found for today' });
-    }
-
-    const entry = existing.rows[0];
-
-    // Calculate hours
-    const clockIn = entry.clock_in.split(':');
-    const clockOut = now.split(':');
-    const inMinutes = parseInt(clockIn[0]) * 60 + parseInt(clockIn[1]);
-    const outMinutes = parseInt(clockOut[0]) * 60 + parseInt(clockOut[1]);
-    const breakMins = break_minutes || 0;
-    const totalMinutes = outMinutes - inMinutes - breakMins;
-    const totalHours = Math.round((totalMinutes / 60) * 100) / 100;
-    const overtime = Math.max(0, totalHours - 8);
-
-    await db.execute(
-      'UPDATE time_entries SET clock_out = ?, break_minutes = ?, total_hours = ?, overtime_hours = ? WHERE id = ?',
-      [now, breakMins, totalHours, overtime, entry.id]
-    );
-
-    res.json({ clock_out: now, total_hours: totalHours, overtime_hours: overtime });
-  } catch (err) {
-    console.error('Clock out error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.post('/api/timesheet', authenticate, requireRole('admin', 'manager'), async (req, res) => {
-  try {
-    const { employee_id, date, clock_in, clock_out, break_minutes, notes } = req.body;
-
-    if (!employee_id || !date || !clock_in) {
-      return res.status(400).json({ error: 'Employee, date, and clock in time required' });
-    }
-
-    let totalHours = null;
-    let overtime = 0;
-
-    if (clock_out) {
-      const inParts = clock_in.split(':');
-      const outParts = clock_out.split(':');
-      const inMinutes = parseInt(inParts[0]) * 60 + parseInt(inParts[1]);
-      const outMinutes = parseInt(outParts[0]) * 60 + parseInt(outParts[1]);
-      const breakMins = break_minutes || 0;
-      const totalMinutes = outMinutes - inMinutes - breakMins;
-      totalHours = Math.round((totalMinutes / 60) * 100) / 100;
-      overtime = Math.max(0, totalHours - 8);
-    }
-
-    const result = await db.execute(`
-      INSERT INTO time_entries (employee_id, date, clock_in, clock_out, break_minutes, total_hours, overtime_hours, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-    `, [employee_id, date, clock_in, clock_out || null, break_minutes || 0, totalHours, overtime, notes || null]);
-
-    res.status(201).json({ id: result.rows[0].id });
-  } catch (err) {
-    console.error('Create time entry error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.delete('/api/timesheet/:id', authenticate, requireRole('admin', 'manager'), async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const result = await db.execute('DELETE FROM time_entries WHERE id = ? RETURNING id', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Time entry not found' });
-    }
-
-    res.json({ message: 'Time entry deleted' });
-  } catch (err) {
-    console.error('Delete time entry error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
 // ============ DASHBOARD STATS ============
 
 app.get('/api/dashboard/stats', authenticate, async (req, res) => {
@@ -986,16 +805,9 @@ app.get('/api/dashboard/stats', authenticate, async (req, res) => {
     );
     const onHolidayToday = holidayResult.rows[0].count;
 
-    const clockedResult = await db.execute(
-      'SELECT COUNT(*) as count FROM time_entries WHERE date = ? AND clock_in IS NOT NULL AND clock_out IS NULL',
-      [today]
-    );
-    const clockedInToday = clockedResult.rows[0].count;
-
     res.json({
       totalEmployees,
-      onHolidayToday,
-      clockedInToday
+      onHolidayToday
     });
   } catch (err) {
     console.error('Get dashboard stats error:', err);

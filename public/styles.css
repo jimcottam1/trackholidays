@@ -580,31 +580,6 @@ tbody tr:last-child td {
   background: #fef3c7;
 }
 
-/* Timesheet */
-.clock-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.timesheet-summary {
-  background: var(--primary-light);
-  padding: 15px 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  display: flex;
-  gap: 30px;
-  flex-wrap: wrap;
-}
-
-.timesheet-summary span {
-  font-size: 14px;
-  color: var(--gray-700);
-}
-
-.timesheet-summary strong {
-  color: var(--primary);
-}
-
 /* Modals */
 .modal {
   display: none;
@@ -943,20 +918,6 @@ body:not(.role-admin):not(.role-manager) td.manager-only {
   .filters select,
   .filters input {
     width: 100%;
-  }
-
-  /* Timesheet */
-  .clock-buttons {
-    width: 100%;
-  }
-
-  .clock-buttons .btn {
-    flex: 1;
-  }
-
-  .timesheet-summary {
-    flex-direction: column;
-    gap: 10px;
   }
 
   /* Modal */

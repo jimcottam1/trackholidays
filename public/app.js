@@ -3,7 +3,6 @@ let currentUser = null;
 let employees = [];
 let departments = [];
 let holidays = [];
-let timeEntries = [];
 let currentCalendarDate = new Date();
 
 // API Helper
@@ -91,8 +90,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
       case 'employees': loadEmployees(); break;
       case 'holidays': loadHolidays(); break;
       case 'calendar': renderCalendar(); break;
-      case 'timesheet': loadTimesheet(); break;
-      case 'departments': loadDepartments(); break;
+case 'departments': loadDepartments(); break;
       case 'users': loadUsers(); break;
     }
   });
@@ -127,8 +125,6 @@ async function loadDashboard() {
     const stats = await api('/dashboard/stats');
     document.getElementById('stat-employees').textContent = stats.totalEmployees;
     document.getElementById('stat-holiday').textContent = stats.onHolidayToday;
-    document.getElementById('stat-clocked').textContent = stats.clockedInToday;
-
     // Load upcoming holidays
     const holidays = await api('/holidays');
     const upcoming = holidays
@@ -222,10 +218,8 @@ function populateEmployeeSelects() {
   const selects = [
     'holiday-employee',
     'holiday-employee-filter',
-    'timesheet-employee-filter',
     'department-manager',
-    'user-employee',
-    'timeentry-employee'
+    'user-employee'
   ];
 
   selects.forEach(id => {
@@ -702,7 +696,7 @@ async function renderCalendar() {
         <div class="day-number">${day}</div>
         ${publicHoliday ? `<div class="holiday-event public" title="${publicHoliday}">${publicHoliday}</div>` : ''}
         ${dayHolidays.slice(0, publicHoliday ? 2 : 3).map(h => `
-          <div class="holiday-event ${h.type}" title="${h.employee_name}">${h.employee_name}</div>
+          <div class="holiday-event ${h.type}" title="${h.employee_name}\n${formatDate(h.start_date)} - ${formatDate(h.end_date)}\n${h.type}${h.notes ? '\n' + h.notes : ''}">${h.employee_name}</div>
         `).join('')}
         ${dayHolidays.length > (publicHoliday ? 2 : 3) ? `<div class="holiday-event other">+${dayHolidays.length - (publicHoliday ? 2 : 3)} more</div>` : ''}
       </div>
@@ -756,102 +750,6 @@ document.getElementById('refresh-public-holidays-btn').addEventListener('click',
     btn.textContent = originalText;
   }
 });
-
-// Timesheet
-async function loadTimesheet() {
-  try {
-    const employeeId = document.getElementById('timesheet-employee-filter').value;
-    const startDate = document.getElementById('timesheet-start-date').value;
-    const endDate = document.getElementById('timesheet-end-date').value;
-
-    let url = '/timesheet?';
-    if (employeeId) url += `employee_id=${employeeId}&`;
-    if (startDate) url += `start_date=${startDate}&`;
-    if (endDate) url += `end_date=${endDate}`;
-
-    timeEntries = await api(url);
-    renderTimesheetTable();
-
-    // Show summary
-    const summary = document.getElementById('timesheet-summary');
-    const totalHours = timeEntries.reduce((sum, t) => sum + (t.total_hours || 0), 0);
-    const overtimeHours = timeEntries.reduce((sum, t) => sum + (t.overtime_hours || 0), 0);
-    summary.innerHTML = `
-      <span>Total Hours: <strong>${totalHours.toFixed(1)}</strong></span>
-      <span>Overtime: <strong>${overtimeHours.toFixed(1)}</strong></span>
-      <span>Entries: <strong>${timeEntries.length}</strong></span>
-    `;
-  } catch (err) {
-    console.error('Failed to load timesheet:', err);
-  }
-}
-
-function renderTimesheetTable() {
-  const tbody = document.querySelector('#timesheet-table tbody');
-  const isManagerOrAdmin = ['admin', 'manager'].includes(currentUser.role);
-
-  if (timeEntries.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No time entries found</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = timeEntries.map(t => `
-    <tr>
-      <td>${t.first_name} ${t.last_name}</td>
-      <td>${formatDate(t.date)}</td>
-      <td>${t.clock_in || '-'}</td>
-      <td>${t.clock_out || '-'}</td>
-      <td>${t.break_minutes || 0} min</td>
-      <td>${t.total_hours ? t.total_hours.toFixed(1) : '-'}</td>
-      <td>${t.overtime_hours ? t.overtime_hours.toFixed(1) : '-'}</td>
-      <td class="actions manager-only">
-        ${isManagerOrAdmin ? `
-          <button class="btn btn-sm btn-danger" onclick="deleteTimeEntry(${t.id})">Delete</button>
-        ` : ''}
-      </td>
-    </tr>
-  `).join('');
-}
-
-document.getElementById('clock-in-btn').addEventListener('click', async () => {
-  try {
-    await api('/timesheet/clock-in', { method: 'POST' });
-    alert('Clocked in successfully!');
-    loadTimesheet();
-  } catch (err) {
-    alert(err.message);
-  }
-});
-
-document.getElementById('clock-out-btn').addEventListener('click', async () => {
-  const breakMinutes = prompt('Enter break time in minutes:', '0');
-  if (breakMinutes === null) return;
-
-  try {
-    await api('/timesheet/clock-out', {
-      method: 'POST',
-      body: JSON.stringify({ break_minutes: parseInt(breakMinutes) || 0 })
-    });
-    alert('Clocked out successfully!');
-    loadTimesheet();
-  } catch (err) {
-    alert(err.message);
-  }
-});
-
-async function deleteTimeEntry(id) {
-  if (!confirm('Are you sure you want to delete this time entry?')) return;
-
-  try {
-    await api(`/timesheet/${id}`, { method: 'DELETE' });
-    loadTimesheet();
-  } catch (err) {
-    alert(err.message);
-  }
-}
-
-document.getElementById('filter-timesheet-btn').addEventListener('click', loadTimesheet);
-document.getElementById('timesheet-employee-filter').addEventListener('change', loadTimesheet);
 
 // Users
 async function loadUsers() {
